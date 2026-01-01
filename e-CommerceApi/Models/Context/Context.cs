@@ -1,17 +1,19 @@
 ﻿using e_CommerceApi.Models.Entity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace e_CommerceApi.Models.Context
 {
-    public class Context : DbContext
+    public class Context : IdentityDbContext<AppUser, AppRole, string>
     {
         public Context(DbContextOptions options) : base(options)
         {
             
         }
 
-        public DbSet<Product> Products { get; set; } = null!;
+        public DbSet<Product> Products { get; set; }  = null!;
 
+        public DbSet<Cart> Carts { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
