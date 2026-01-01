@@ -1,6 +1,13 @@
 using e_CommerceApi.Middlewares;
 using e_CommerceApi.Models.Context;
+using e_CommerceApi.Models.Entity;
+using e_CommerceApi.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Scalar.AspNetCore;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,10 +16,46 @@ builder.Services.AddDbContext<Context>(opt =>
 {
     opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+
+builder.Services.AddIdentity<AppUser, AppRole>().AddEntityFrameworkStores<Context>();
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequiredLength = 6;
+
+    options.User.RequireUniqueEmail = true;
+    options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+
+});
+
+builder.Services.AddAuthentication(x => {
+    x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+}).AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidIssuer = "aniltorun.com",
+            //ValidIssuers = [ "aniltorun.com", "yourdomain.com" ],
+            ValidateAudience = false,
+            ValidAudience = "abc",
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(builder.Configuration["JWTSecurity:SecretKey"]!)),
+            ValidateLifetime = true,
+        };
+    });
+
 builder.Services.AddCors();
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+builder.Services.AddScoped<TokenService>();
 
 var app = builder.Build();
 
@@ -26,6 +69,7 @@ if (app.Environment.IsDevelopment())
     {
         opt.SwaggerEndpoint("/openapi/v1.json", "e-Commerce API V1");
     });
+    app.MapScalarApiReference();
 }
 
 app.UseHttpsRedirection();
@@ -34,11 +78,16 @@ app.UseStaticFiles();
 
 app.UseCors(opt =>
 {
-    opt.AllowAnyHeader().AllowAnyMethod()
+    opt.AllowAnyHeader().AllowAnyMethod().AllowCredentials()
        .WithOrigins("http://localhost:3000");
 });
+
+app.UseAuthentication();
+
 app.UseAuthorization();
 
 app.MapControllers();
+
+SeedDatabase.Initialize(app);
 
 app.Run();

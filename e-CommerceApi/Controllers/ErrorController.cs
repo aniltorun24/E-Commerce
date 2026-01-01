@@ -28,7 +28,7 @@ namespace e_CommerceApi.Controllers
         [HttpGet("ServerError")]
         public IActionResult ServerError()
         {
-            throw new Exception("server error");
+            return Ok("server error"); //500
         }
 
         [HttpGet("ValidationError")]
